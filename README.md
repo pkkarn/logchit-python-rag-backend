@@ -3,7 +3,7 @@
 A high-performance, cost-effective Retrieval-Augmented Generation (RAG) backend engineered to handle document search and retrieval at scale (up to 10M+ documents). This system is designed with production-grade patterns, focusing on low latency, cost optimization, and near-zero hallucination.
 
 <p align="center">
-  <video src="assets/demo.mp4" width="100%" autoplay loop muted playsinline></video>
+  <img src="assets/demo.gif" width="100%" alt="System Demo" />
 </p>
 
 ## 🚀 Architectural Highlights
