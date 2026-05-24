@@ -3,7 +3,7 @@ from database.vector import query_similar_vectors
 from services.embedding import get_text_embedding, generate_chat_response
 from database.cache import get_cached_answer, set_cached_answer
 
-def execute_rag_query(query_text: str) -> dict:
+def execute_rag_query(query_text: str, user_id: str) -> dict:
     """
     Coordinates the multi-system RAG pipeline:
     1. Embeds the user's natural language query using OpenAI.
@@ -15,15 +15,19 @@ def execute_rag_query(query_text: str) -> dict:
     """
     try:
         # 0. Check Semantic Cache
-        cached_result = get_cached_answer(query_text)
+        cached_result = get_cached_answer(query_text, user_id)
         if cached_result:
             return cached_result
 
         # 1. Generate embedding for query
         query_vector = get_text_embedding(query_text)
 
-        # 2. Query Pinecone for top 3 closest vectors
-        query_response = query_similar_vectors(query_vector, top_k=3)
+        # 2. Query Pinecone for top 3 closest vectors with user_id filter
+        query_response = query_similar_vectors(
+            query_vector, 
+            top_k=3,
+            filter={"user_id": {"$eq": user_id}}
+        )
 
         if not query_response or not query_response.matches:
             return {
@@ -88,7 +92,7 @@ def execute_rag_query(query_text: str) -> dict:
         }
         
         # 7. Save to Semantic Cache
-        set_cached_answer(query_text, final_response)
+        set_cached_answer(query_text, final_response, user_id)
 
         return final_response
     except Exception as e:

@@ -6,7 +6,7 @@ from services.s3_service import upload_pdf_to_s3
 from services.chunker import extract_chunks_from_pdf
 from services.embedding import get_text_embedding
 
-def process_document_ingestion(file_bytes: bytes, filename: str) -> dict:
+def process_document_ingestion(file_bytes: bytes, filename: str, user_id: str) -> dict:
     """
     Coordinates the multi-system pipeline to ingest a PDF:
     1. Uploads binary stream to AWS S3.
@@ -25,7 +25,7 @@ def process_document_ingestion(file_bytes: bytes, filename: str) -> dict:
     conn = get_db_connection()
     try:
         # Create document master row
-        insert_document(conn, document_id, "pkkarn", filename, s3_url)
+        insert_document(conn, document_id, user_id, filename, s3_url)
 
         # Extract chunks
         chunks = extract_chunks_from_pdf(file_bytes)
@@ -41,7 +41,7 @@ def process_document_ingestion(file_bytes: bytes, filename: str) -> dict:
             upsert_chunk_vector(
                 vector_id=chunk_id,
                 vector=vector,
-                metadata={"document_id": document_id}
+                metadata={"document_id": document_id, "user_id": user_id}
             )
 
             # Save in PostgreSQL

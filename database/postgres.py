@@ -19,6 +19,18 @@ def get_db_connection():
     conn = psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
     return conn
 
+def get_user_by_email(conn, email: str):
+    with conn.cursor() as cur:
+        cur.execute("SELECT * FROM users WHERE email = %s;", (email,))
+        return cur.fetchone()
+
+def insert_user(conn, user_id: str, email: str, hashed_password: str):
+    with conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO users (id, email, hashed_password) VALUES (%s, %s, %s);",
+            (user_id, email, hashed_password)
+        )
+
 def insert_document(conn, doc_id: str, user_id: str, file_name: str, s3_url: str):
     """
     Inserts a new document master record into the PostgreSQL database.

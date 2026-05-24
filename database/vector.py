@@ -20,7 +20,7 @@ def upsert_chunk_vector(vector_id:str, vector: list[float], metadata: dict):
     except Exception as e:
         print(f"❌ Error upserting vector: {e}")
 
-def query_similar_vectors(vector: list[float], top_k: int = 3):
+def query_similar_vectors(vector: list[float], top_k: int = 3, filter: dict = None):
     """
     Performs a similarity search in the Pinecone index.
     """
@@ -28,7 +28,8 @@ def query_similar_vectors(vector: list[float], top_k: int = 3):
         results = index.query(
             vector=vector, 
             top_k=top_k, 
-            include_metadata=True
+            include_metadata=True,
+            filter=filter
         )
         return results
     except Exception as e:
