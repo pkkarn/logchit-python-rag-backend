@@ -2,6 +2,25 @@
 
 A high-performance, cost-effective Retrieval-Augmented Generation (RAG) backend engineered to handle document search and retrieval at scale (up to 10M+ documents). This system is designed with production-grade patterns, focusing on low latency, cost optimization, and near-zero hallucination.
 
+extensive_rag_backend/
+├── venv/                 # Virtual environment (ignored by git)
+├── .env                  # Secrets & API Keys (ignored by git)
+├── .env.example          # Template for environment variables
+├── requirements.txt      # Dependencies
+├── main.py               # API routes (FastAPI entrypoint)
+├── test_main.py          # Pytest endpoint tests
+├── config.py             # Configuration / Settings loader (Reads .env)
+├── database/             # Database interfaces
+│   ├── __init__.py
+│   ├── postgres.py       # SQL database operations (Insert/Select chunks)
+│   ├── vector.py         # Vector DB operations (Pinecone inserts/similarity search)
+│   └── cache.py          # Cache operations (Upstash Redis gets/sets)
+└── services/             # Core business logic (RAG logic)
+    ├── __init__.py
+    ├── chunker.py        # Splitting documents into 200-word pieces
+    ├── embedding.py      # OpenAI API wrappers (Generate embeddings & chat)
+    └── query_runner.py   # The "Brain" (Coordinates Cache -> Vector DB -> SQL -> LLM)
+
 ## 🚀 Architectural Highlights
 
 1. **Separation of Index & Storage (Cost Optimization)**
