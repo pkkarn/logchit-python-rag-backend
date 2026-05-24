@@ -10,11 +10,11 @@ def test_app_running():
     assert response.status_code == 200
     assert response.json() == {"status": "running"}
 
-@patch("main.upload_pdf_to_s3")
-@patch("main.get_db_connection")
-@patch("main.extract_chunks_from_pdf")
-@patch("main.get_text_embedding")
-@patch("main.upsert_chunk_vector")
+@patch("services.ingestion_service.upload_pdf_to_s3")
+@patch("services.ingestion_service.get_db_connection")
+@patch("services.ingestion_service.extract_chunks_from_pdf")
+@patch("services.ingestion_service.get_text_embedding")
+@patch("services.ingestion_service.upsert_chunk_vector")
 def test_ingest(
     mock_upsert_vector,
     mock_get_embedding,
@@ -32,6 +32,7 @@ def test_ingest(
     # Mock Postgres Connection & Cursor
     mock_conn = MagicMock()
     mock_cur = MagicMock()
+    mock_cur.__enter__.return_value = mock_cur
     mock_conn.cursor.return_value = mock_cur
     mock_get_db.return_value = mock_conn
     
