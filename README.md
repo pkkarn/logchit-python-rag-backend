@@ -2,38 +2,22 @@
 
 A high-performance, cost-effective Retrieval-Augmented Generation (RAG) backend engineered to handle document search and retrieval at scale (up to 10M+ documents). This system is designed with production-grade patterns, focusing on low latency, cost optimization, and near-zero hallucination.
 
-extensive_rag_backend/
-├── venv/                 # Virtual environment (ignored by git)
-├── .env                  # Secrets & API Keys (ignored by git)
-├── .env.example          # Template for environment variables
-├── requirements.txt      # Dependencies
-├── main.py               # API routes (FastAPI entrypoint)
-├── test_main.py          # Pytest endpoint tests
-├── config.py             # Configuration / Settings loader (Reads .env)
-├── database/             # Database interfaces
-│   ├── __init__.py
-│   ├── postgres.py       # SQL database operations (Insert/Select chunks)
-│   ├── vector.py         # Vector DB operations (Pinecone inserts/similarity search)
-│   └── cache.py          # Cache operations (Upstash Redis gets/sets)
-└── services/             # Core business logic (RAG logic)
-    ├── __init__.py
-    ├── chunker.py        # Splitting documents into 200-word pieces
-    ├── embedding.py      # OpenAI API wrappers (Generate embeddings & chat)
-    └── query_runner.py   # The "Brain" (Coordinates Cache -> Vector DB -> SQL -> LLM)
-
 ## 🚀 Architectural Highlights
 
 1. **Separation of Index & Storage (Cost Optimization)**
    * **Vector Index (Pinecone):** Used strictly for vector similarity lookup, storing only embeddings and their corresponding IDs.
    * **Document Store (PostgreSQL):** Stores the actual raw text chunks and rich metadata (filenames, page numbers, authors). 
-   * *Impact:* Keeps the memory footprint of the expensive Vector DB to a minimum, reducing database hosting costs by up to 80%.
+   * *Impact:* Keeps the memory footprint of the expensive Vector DB to a minimum, reducing database hosting costs by up to 80% at scale.
 
 2. **Low-Latency Semantic Caching (Redis)**
    * A caching layer is implemented in front of the query pipeline. Before querying the vector database and invoking the LLM, the system performs a vector similarity search on cached queries in Redis.
    * *Impact:* Cache hits return response payloads in <50ms and completely bypass LLM API costs.
 
-3. **Asynchronous Ingestion Pipeline**
-   * Document ingestion is decoupled from the main API thread using a message queue. Uploaded files are offloaded to background workers that handle chunking, embedding generation, and database updates.
+3. **Asynchronous Ingestion Pipeline (Phase 1 Complete)**
+   * Handles binary PDF streams completely in-memory (using `io.BytesIO`). 
+   * Decouples raw document uploads to **AWS S3** from the vectorizing logic.
+   * Extracts text **page-by-page** using `pypdf`, preserving exact page numbers for hyperlinked client-side citations.
+   * Chunks pages using a sliding window algorithm (~200 words per chunk with a 20-word overlap) to prevent LLM attention loss and context window fragmentation.
 
 4. **Near-Zero Hallucination Guardrails**
    * Custom prompt engineering combined with strict validation protocols ensures the LLM generates answers *only* from the retrieved contexts.
@@ -43,11 +27,11 @@ extensive_rag_backend/
 
 ## 🛠️ Tech Stack
 
-* **Backend Framework:** FastAPI (Python)
-* **Databases:** PostgreSQL (Metadata & Chunks), Pinecone (Vector Index)
-* **Caching:** Redis (Semantic Cache)
-* **Testing:** Pytest & HTTPX
-* **Deployment/Containers:** Docker (Optional / Planned)
+* **Backend Framework:** FastAPI (Python 3.13+)
+* **Databases:** PostgreSQL (Supabase, Metadata & Chunks), Pinecone (Vector Index)
+* **Caching:** Redis (Upstash Semantic Cache)
+* **AI & Embeddings:** OpenAI SDK (`text-embedding-3-small` / `gpt-4o-mini`)
+* **Testing:** Pytest, HTTPX & Unittest Mock
 
 ---
 
@@ -64,49 +48,36 @@ extensive_rag_backend/
 
 ### 2. Document Ingestion
 * **Endpoint:** `POST /ingest`
+* **Request Headers:** `Content-Type: multipart/form-data`
 * **Request Body:**
-  ```json
-  {
-    "document_id": "doc_001",
-    "text": "The refund policy allows customers to return products within 30 days of purchase for a full refund."
-  }
-  ```
+  * `file`: Binary PDF File
 * **Response:**
   ```json
   {
-    "status": "ingested",
-    "document_id": "doc_001"
-  }
-  ```
-
-### 3. RAG Query
-* **Endpoint:** `POST /query`
-* **Request Body:**
-  ```json
-  {
-    "query": "What is the return window?"
-  }
-  ```
-* **Response:**
-  ```json
-  {
-    "answer": "You can return products within 30 days of purchase for a full refund.",
-    "citations": [
-      {
-        "document_id": "doc_001",
-        "page_number": 1
-      }
-    ]
+    "status": "success",
+    "document_id": "5f9a5c39-bf10-4432-b7e3-df2e084a69d4",
+    "chunks_count": 4,
+    "s3_url": "https://rag-s3-bucket-pk.s3.us-east-1.amazonaws.com/reason_core_ai_resume.pdf"
   }
   ```
 
 ---
 
-## 🧪 Testing
+## 🧪 Testing Suite
 
-The project uses `pytest` for endpoint and integration verification.
+We have written a comprehensive, dual-layered test suite to ensure the system is completely stable.
 
-To run the test suite:
+### 1. Offline Unit & Integration Tests (Mocked)
+We use `pytest` and `unittest.mock` to test the entire `/ingest` pipeline offline. It mocks S3, Postgres, OpenAI, and Pinecone, allowing you to test the API router, Pydantic validations, and chunking boundaries locally in milliseconds without hitting network limits or token quotas.
+
+To run the unit test suite:
 ```bash
-pytest test_main.py
+./venv/bin/pytest test_main.py
 ```
+
+### 2. Live Database Verification Tests
+To test the active connection, data integrity, and bridge-ID sync between your live AWS S3, Supabase Postgres, and Pinecone instances, run the verification script:
+```bash
+./venv/bin/python test_verification.py
+```
+This script queries your live tables and index, verifying that the chunk counts match, relational foreign keys exist, and vector IDs are perfectly synchronized between PostgreSQL and Pinecone.
