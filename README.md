@@ -1,4 +1,8 @@
-# Enterprise-Grade RAG Pipeline with Semantic Caching & Hybrid Search
+# LogChit: Prod RAG Backend
+
+<p align="center">
+  <img src="assets/mutli-tenant_rag.png" width="100%" alt="Multi-Tenant RAG Architecture" />
+</p>
 
 A high-performance, cost-effective Retrieval-Augmented Generation (RAG) backend engineered to handle document search and retrieval at scale (up to 10M+ documents). This system is designed with production-grade patterns, focusing on low latency, cost optimization, and near-zero hallucination.
 
