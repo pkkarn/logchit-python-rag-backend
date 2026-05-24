@@ -2,3 +2,10 @@ fastapi
 uvicorn
 pytest
 httpx
+pydantic-settings
+boto3
+pypdf
+openai
+pinecone-client
+psycopg2-binary
+python-multipart

@@ -61,6 +61,87 @@ A high-performance, cost-effective Retrieval-Augmented Generation (RAG) backend 
   }
   ```
 
+### 3. Document Query (RAG)
+* **Endpoint:** `POST /query`
+* **Request Headers:** `Content-Type: application/json`
+* **Request Body:**
+  ```json
+  {
+    "query": "What is the return window?"
+  }
+  ```
+* **Response:**
+  ```json
+  {
+    "status": "success",
+    "answer": "The return window for all items is 30 days from the purchase date, as long as they are returned in original condition with receipts [Policy_Handbook, Page 4].",
+    "citations": [
+      {
+        "file_name": "Policy_Handbook.pdf",
+        "page_number": 4,
+        "s3_url": "https://rag-s3-bucket-pk.s3.us-east-1.amazonaws.com/Policy_Handbook.pdf"
+      }
+    ]
+  }
+  ```
+
+---
+
+## 🛠️ Setup & Installation Guide
+
+### Prerequisites
+* Python 3.13+
+* A running PostgreSQL database (e.g., Supabase)
+* A Pinecone account (with a serverless index)
+* OpenAI API key
+* AWS S3 Bucket (public read enabled)
+
+### Step-by-Step Installation
+
+1. **Clone the Repository:**
+   ```bash
+   git clone https://github.com/pkkarn/extensive-rag-backend.git
+   cd extensive-rag-backend
+   ```
+
+2. **Create & Activate Virtual Environment:**
+   ```bash
+   python3 -m venv venv
+   source venv/bin/activate
+   ```
+
+3. **Install Dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. **Configure Environment Variables:**
+   Create a `.env` file in the root of the project using the template provided in `.env.example`:
+   ```bash
+   cp .env.example .env
+   ```
+   Fill in your active credentials:
+   ```env
+   ADMIN_EMAIL=your_email@example.com
+   APP_NAME="RAG Backend Pipeline"
+   OPENAI_API_KEY=sk-proj-yourOpenAiKey
+   PINECONE_API_KEY=yourPineconeApiKey
+   PINECONE_INDEX_NAME=your-pinecone-index
+   SUPABASE_KEY="postgresql://postgres.yourdb:yourpassword@aws-0-us-east-1.pooler.supabase.com:6543/postgres?sslmode=require"
+   AWS_ACCESS_KEY_ID=yourAwsAccessKey
+   AWS_SECRET_ACCESS_KEY=yourAwsSecretKey
+   AWS_S3_BUCKET=your-s3-bucket-name
+   ```
+
+5. **Initialize PostgreSQL Tables:**
+   Execute the SQL statements inside `init.sql` on your PostgreSQL database to create the `documents` and `document_chunks` tables with the appropriate indices.
+
+6. **Start the Development Server:**
+   ```bash
+   uvicorn main:app --reload
+   ```
+   The interactive API documentation will be available at [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs).
+
 ---
 
 ## 🧪 Testing Suite
@@ -72,12 +153,13 @@ We use `pytest` and `unittest.mock` to test the entire `/ingest` pipeline offlin
 
 To run the unit test suite:
 ```bash
-./venv/bin/pytest test_main.py
+pytest test_main.py
 ```
 
 ### 2. Live Database Verification Tests
 To test the active connection, data integrity, and bridge-ID sync between your live AWS S3, Supabase Postgres, and Pinecone instances, run the verification script:
 ```bash
-./venv/bin/python test_verification.py
+python test_verification.py
 ```
 This script queries your live tables and index, verifying that the chunk counts match, relational foreign keys exist, and vector IDs are perfectly synchronized between PostgreSQL and Pinecone.
+
