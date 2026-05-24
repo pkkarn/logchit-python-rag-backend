@@ -19,6 +19,22 @@ def get_text_embedding(text: str) -> list[float]:
         print(f"❌ Error generating embedding: {e}")
         raise e
 
+def get_text_embeddings_batch(texts: list[str]) -> list[list[float]]:
+    """
+    Calls OpenAI API to generate multiple embeddings in a single batch network request.
+    This is up to 100x faster than calling get_text_embedding sequentially.
+    """
+    try:
+        response = openai_client.embeddings.create(
+            input=texts,
+            model="text-embedding-3-small"
+        )
+        sorted_data = sorted(response.data, key=lambda x: x.index)
+        return [item.embedding for item in sorted_data]
+    except Exception as e:
+        print(f"❌ Error generating batch embeddings: {e}")
+        raise e
+
 def generate_chat_response(system_prompt: str, user_prompt: str) -> str:
     """
     Calls OpenAI Chat Completion API to generate an answer.

@@ -30,5 +30,6 @@ class Settings(BaseSettings):
     aws_secret_access_key: str
     aws_region: str
     aws_bucket_name: str
+    sqs_queue_url: str
 
 settings = Settings()

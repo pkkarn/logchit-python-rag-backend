@@ -11,7 +11,8 @@ CREATE TABLE documents (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id VARCHAR(255) NOT NULL DEFAULT 'pkkarn', -- Links this document to pkkarn
     file_name VARCHAR(255) NOT NULL,
-    s3_url VARCHAR(512),
+    s3_url TEXT NOT NULL,
+    status VARCHAR(50) DEFAULT 'PENDING',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 

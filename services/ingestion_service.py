@@ -1,71 +1,86 @@
 import io
 import uuid
-from database.postgres import get_db_connection, insert_document, insert_document_chunk
-from database.vector import upsert_chunk_vector
+from database.postgres import get_db_connection, insert_document, insert_document_chunks_batch
+from database.vector import upsert_vectors_batch
 from services.s3_service import upload_pdf_to_s3
 from services.chunker import extract_chunks_from_pdf
-from services.embedding import get_text_embedding
+from services.embedding import get_text_embeddings_batch
+from services.sqs_service import send_message_to_queue
 
-def process_document_ingestion(file_bytes: bytes, filename: str, user_id: str) -> dict:
+def enqueue_document_ingestion(file_bytes: bytes, filename: str, user_id: str) -> dict:
     """
-    Coordinates the multi-system pipeline to ingest a PDF:
-    1. Uploads binary stream to AWS S3.
-    2. Generates a unique document ID.
-    3. Connects to PostgreSQL and inserts document master record.
-    4. Extracts text page-by-page and chunks it.
-    5. Loops through chunks to generate vector embeddings and:
-       - Upserts vectors into Pinecone (vector index).
-       - Inserts chunk rows into PostgreSQL.
-    6. Commits the transaction and cleans up.
+    Synchronous HTTP endpoint handler.
+    Uploads to S3, saves a PENDING record, and queues an SQS message.
     """
-    # Upload to S3
     s3_url = upload_pdf_to_s3(io.BytesIO(file_bytes), filename)
-    
     document_id = str(uuid.uuid4())
+    
     conn = get_db_connection()
     try:
-        # Create document master row
-        insert_document(conn, document_id, user_id, filename, s3_url)
-
-        # Extract chunks
-        chunks = extract_chunks_from_pdf(file_bytes)
-
-        # Process chunks
-        for chunk in chunks:
-            chunk_id = str(uuid.uuid4())
-            
-            # Generate embedding
-            vector = get_text_embedding(chunk["text"])
-            
-            # Save in Pinecone
-            upsert_chunk_vector(
-                vector_id=chunk_id,
-                vector=vector,
-                metadata={"document_id": document_id, "user_id": user_id}
-            )
-
-            # Save in PostgreSQL
-            insert_document_chunk(
-                conn=conn,
-                doc_id=document_id,
-                chunk_index=chunk["chunk_index"],
-                page_number=chunk["page_number"],
-                raw_text=chunk["text"],
-                pinecone_vector_id=chunk_id
-            )
-
-        # Commit transaction
+        insert_document(conn, document_id, user_id, filename, s3_url, status='PENDING')
         conn.commit()
-        
-        return {
-            "status": "success",
-            "document_id": document_id,
-            "chunks_count": len(chunks),
-            "s3_url": s3_url
-        }
     except Exception as e:
         conn.rollback()
-        print(f"❌ Error during document ingestion: {e}")
+        raise e
+    finally:
+        conn.close()
+
+    # Send to SQS
+    send_message_to_queue({
+        "document_id": document_id,
+        "user_id": user_id,
+        "s3_url": s3_url
+    })
+
+    return {
+        "status": "processing",
+        "document_id": document_id,
+        "message": "Document queued for processing."
+    }
+
+def process_document_background(file_bytes: bytes, document_id: str, user_id: str):
+    """
+    Background worker logic to process document chunks and batched API calls.
+    """
+    chunks = extract_chunks_from_pdf(file_bytes)
+    if not chunks:
+        return
+        
+    chunk_texts = [c["text"] for c in chunks]
+    embeddings = get_text_embeddings_batch(chunk_texts)
+    
+    vectors_batch = []
+    postgres_batch = []
+    
+    for i, chunk in enumerate(chunks):
+        chunk_id = str(uuid.uuid4())
+        vector = embeddings[i]
+        
+        vectors_batch.append((
+            chunk_id,
+            vector,
+            {"document_id": document_id, "user_id": user_id}
+        ))
+        
+        postgres_batch.append((
+            chunk_id, 
+            document_id, 
+            chunk["chunk_index"], 
+            chunk["page_number"], 
+            chunk["text"], 
+            chunk_id # pinecone_vector_id
+        ))
+
+    # Batch upsert to Pinecone
+    upsert_vectors_batch(vectors_batch)
+
+    # Batch insert to Postgres
+    conn = get_db_connection()
+    try:
+        insert_document_chunks_batch(conn, postgres_batch)
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
         raise e
     finally:
         conn.close()

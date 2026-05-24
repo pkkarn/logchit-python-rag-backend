@@ -27,3 +27,17 @@ def upload_pdf_to_s3(file_obj, filename: str):
     except Exception as e:
         print(f"❌ Error uploading to S3: {e}")
         raise e
+
+def download_pdf_from_s3(s3_url: str) -> bytes:
+    """
+    Downloads a file securely from S3 using boto3 authentication.
+    Extracts the filename key from the S3 URL.
+    """
+    try:
+        filename = s3_url.split("/")[-1]
+        bucket = settings.aws_bucket_name
+        response = s3_client.get_object(Bucket=bucket, Key=filename)
+        return response['Body'].read()
+    except Exception as e:
+        print(f"❌ Error downloading from S3: {e}")
+        raise e

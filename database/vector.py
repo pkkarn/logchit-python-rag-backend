@@ -20,6 +20,17 @@ def upsert_chunk_vector(vector_id:str, vector: list[float], metadata: dict):
     except Exception as e:
         print(f"❌ Error upserting vector: {e}")
 
+def upsert_vectors_batch(vectors_batch: list[tuple]):
+    """
+    Upserts a batch of vectors into the Pinecone index.
+    vectors_batch should be a list of tuples: (vector_id, vector, metadata)
+    """
+    try:
+        index.upsert(vectors=vectors_batch)
+        print(f"✅ Successfully upserted batch of {len(vectors_batch)} vectors")
+    except Exception as e:
+        print(f"❌ Error upserting vector batch: {e}")
+
 def query_similar_vectors(vector: list[float], top_k: int = 3, filter: dict = None):
     """
     Performs a similarity search in the Pinecone index.

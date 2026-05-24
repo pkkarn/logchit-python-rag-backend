@@ -31,15 +31,36 @@ def insert_user(conn, user_id: str, email: str, hashed_password: str):
             (user_id, email, hashed_password)
         )
 
-def insert_document(conn, doc_id: str, user_id: str, file_name: str, s3_url: str):
+def insert_document(conn, doc_id: str, user_id: str, file_name: str, s3_url: str, status: str = 'PENDING'):
     """
     Inserts a new document master record into the PostgreSQL database.
     """
     with conn.cursor() as cur:
         cur.execute(
-            "INSERT INTO documents (id, user_id, file_name, s3_url) VALUES (%s, %s, %s, %s);",
-            (doc_id, user_id, file_name, s3_url)
+            "INSERT INTO documents (id, user_id, file_name, s3_url, status) VALUES (%s, %s, %s, %s, %s);",
+            (doc_id, user_id, file_name, s3_url, status)
         )
+
+def update_document_status(conn, doc_id: str, status: str):
+    """
+    Updates the status of a document.
+    """
+    with conn.cursor() as cur:
+        cur.execute(
+            "UPDATE documents SET status = %s WHERE id = %s;",
+            (status, doc_id)
+        )
+
+def get_document_status(conn, doc_id: str) -> str | None:
+    """
+    Retrieves the current processing status of a document.
+    """
+    with conn.cursor() as cur:
+        cur.execute("SELECT status FROM documents WHERE id = %s;", (doc_id,))
+        result = cur.fetchone()
+        if result:
+            return result['status']
+        return None
 
 def insert_document_chunk(conn, doc_id: str, chunk_index: int, page_number: int, raw_text: str, pinecone_vector_id: str):
     """
@@ -60,6 +81,22 @@ def insert_document_chunk(conn, doc_id: str, chunk_index: int, page_number: int,
                 raw_text,
                 pinecone_vector_id
             )
+        )
+
+def insert_document_chunks_batch(conn, chunks_data: list[tuple]):
+    """
+    Inserts a batch of document chunk records into the PostgreSQL database.
+    chunks_data: [(id, doc_id, chunk_index, page_number, raw_text, pinecone_vector_id), ...]
+    """
+    from psycopg2.extras import execute_values
+    with conn.cursor() as cur:
+        execute_values(
+            cur,
+            """
+            INSERT INTO document_chunks (id, document_id, chunk_index, page_number, raw_text, pinecone_vector_id)
+            VALUES %s;
+            """,
+            chunks_data
         )
 
 def get_chunks_and_document_by_vector_ids(conn, vector_ids: list[str]) -> list[dict]:

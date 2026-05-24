@@ -28,11 +28,10 @@ This project is a production-ready Retrieval-Augmented Generation (RAG) backend 
    * A caching layer is implemented in front of the query pipeline. Before querying the vector database and invoking the LLM, the system performs a vector similarity search on cached queries in Redis.
    * *Impact:* Cache hits return response payloads in <50ms and completely bypass LLM API costs.
 
-3. **Asynchronous Ingestion Pipeline (Phase 1 Complete)**
-   * Handles binary PDF streams completely in-memory (using `io.BytesIO`). 
-   * Decouples raw document uploads to **AWS S3** from the vectorizing logic.
-   * Extracts text **page-by-page** using `pypdf`, preserving exact page numbers for hyperlinked client-side citations.
-   * Chunks pages using a sliding window algorithm (~200 words per chunk with a 20-word overlap) to prevent LLM attention loss and context window fragmentation.
+3. **Event-Driven Asynchronous Ingestion (AWS SQS)**
+   * To prevent the FastAPI event loop from blocking on heavy ML tasks (e.g., chunking, calling OpenAI APIs, Upserting to Pinecone), the `/ingest` endpoint instantly returns a `202 Accepted` and offloads the heavy lifting.
+   * Upload tasks are dropped into an **Amazon SQS Queue**.
+   * A completely isolated, scalable Python background worker (`worker.py`) polls the SQS queue, downloads the file securely from S3, processes the vector embeddings in large batches, and updates the PostgreSQL status to `COMPLETED`. This guarantees zero latency impact on the user-facing web server.
 
 4. **Near-Zero Hallucination Guardrails**
    * Custom prompt engineering combined with strict validation protocols ensures the LLM generates answers *only* from the retrieved contexts.
@@ -48,6 +47,7 @@ This project is a production-ready Retrieval-Augmented Generation (RAG) backend 
 * **Upstash Vector (Semantic Cache):** Sits in front of the LLM pipeline, caching the mathematical intent of user queries to return instant answers for semantically identical questions, drastically reducing OpenAI API costs.
 * **OpenAI (LLM & Embeddings):** Provides `text-embedding-3-small` to convert text into vectors, and `gpt-4o-mini` to generate grounded, conversational answers from the retrieved contexts.
 * **AWS S3:** Provides highly durable, scalable cloud storage for the original binary PDF files, allowing the frontend to download and display cited source documents.
+* **AWS SQS:** Message queue acting as a highly available, distributed broker to decouple the web server from the background worker.
 
 ---
 
@@ -152,9 +152,10 @@ This project is a production-ready Retrieval-Augmented Generation (RAG) backend 
 5. **Initialize PostgreSQL Tables:**
    Execute the SQL statements inside `init.sql` on your PostgreSQL database to create the `documents` and `document_chunks` tables with the appropriate indices.
 
-6. **Start the Development Server:**
+6. **Start the Distributed System:**
+   Because this is an event-driven architecture, both the Web Server and the Background Worker must be running. Use the provided bash script to start both locally:
    ```bash
-   uvicorn main:app --reload
+   ./start.sh
    ```
    The interactive API documentation will be available at [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs).
 
