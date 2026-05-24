@@ -15,7 +15,8 @@ class Settings(BaseSettings):
     openai_api_key: str
     redis_url: str
     database_url: str
-    upstash_api_key: Optional[str] = None
+    upstash_vector_rest_url: Optional[str] = None
+    upstash_vector_rest_token: Optional[str] = None
     supabase_key: Optional[str] = None
 
     # AWS S3

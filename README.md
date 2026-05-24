@@ -6,6 +6,13 @@ A high-performance, cost-effective Retrieval-Augmented Generation (RAG) backend 
   <img src="assets/demo.gif" width="100%" alt="System Demo" />
 </p>
 
+<p align="center">
+  <img src="https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi" alt="FastAPI" /> <img src="https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white" alt="PostgreSQL" /> <img src="https://img.shields.io/badge/Pinecone-000000?style=for-the-badge&logo=pinecone&logoColor=white" alt="Pinecone" /> <img src="https://img.shields.io/badge/Upstash-00E9A3?style=for-the-badge&logo=upstash&logoColor=black" alt="Upstash" /> <img src="https://img.shields.io/badge/OpenAI-412991?style=for-the-badge&logo=openai&logoColor=white" alt="OpenAI" /> <img src="https://img.shields.io/badge/AWS_S3-569A31?style=for-the-badge&logo=amazons3&logoColor=white" alt="AWS S3" />
+</p>
+
+## 📖 Overview
+This project is a production-ready Retrieval-Augmented Generation (RAG) backend API. It takes raw PDF documents, processes them using sliding-window chunking, stores their embeddings in a vector database for semantic search, and stores their raw text in a relational database. When a user asks a question, the system retrieves the most relevant chunks and uses a Large Language Model to generate an answer with exact citations, guaranteeing zero hallucination. To ensure lightning-fast responses and minimal LLM costs, a semantic caching layer intercepts identical or highly similar questions.
+
 ## 🚀 Architectural Highlights
 
 1. **Separation of Index & Storage (Cost Optimization)**
@@ -31,11 +38,12 @@ A high-performance, cost-effective Retrieval-Augmented Generation (RAG) backend 
 
 ## 🛠️ Tech Stack
 
-* **Backend Framework:** FastAPI (Python 3.13+)
-* **Databases:** PostgreSQL (Supabase, Metadata & Chunks), Pinecone (Vector Index)
-* **Caching:** Redis (Upstash Semantic Cache)
-* **AI & Embeddings:** OpenAI SDK (`text-embedding-3-small` / `gpt-4o-mini`)
-* **Testing:** Pytest, HTTPX & Unittest Mock
+* **FastAPI (Python):** Powers the core backend API, chosen for its high-performance asynchronous routing and automatic OpenAPI documentation.
+* **Pinecone (Vector DB):** Stores the 1536-dimensional OpenAI embeddings and performs rapid K-Nearest Neighbor (KNN) similarity searches to find relevant document chunks.
+* **PostgreSQL (Supabase):** Acts as the central source of truth, storing raw text chunks, rich metadata, and foreign-key relationships (The "Bridge ID" pattern) to keep the vector index lightweight.
+* **Upstash Vector (Semantic Cache):** Sits in front of the LLM pipeline, caching the mathematical intent of user queries to return instant answers for semantically identical questions, drastically reducing OpenAI API costs.
+* **OpenAI (LLM & Embeddings):** Provides `text-embedding-3-small` to convert text into vectors, and `gpt-4o-mini` to generate grounded, conversational answers from the retrieved contexts.
+* **AWS S3:** Provides highly durable, scalable cloud storage for the original binary PDF files, allowing the frontend to download and display cited source documents.
 
 ---
 

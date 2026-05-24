@@ -1,6 +1,7 @@
 from database.postgres import get_db_connection, get_chunks_and_document_by_vector_ids
 from database.vector import query_similar_vectors
 from services.embedding import get_text_embedding, generate_chat_response
+from database.cache import get_cached_answer, set_cached_answer
 
 def execute_rag_query(query_text: str) -> dict:
     """
@@ -13,6 +14,11 @@ def execute_rag_query(query_text: str) -> dict:
     6. Returns the grounded answer and citations list.
     """
     try:
+        # 0. Check Semantic Cache
+        cached_result = get_cached_answer(query_text)
+        if cached_result:
+            return cached_result
+
         # 1. Generate embedding for query
         query_vector = get_text_embedding(query_text)
 
@@ -75,11 +81,16 @@ def execute_rag_query(query_text: str) -> dict:
         # 6. Call OpenAI LLM to generate answer
         answer = generate_chat_response(system_prompt, user_prompt)
 
-        return {
+        final_response = {
             "status": "success",
             "answer": answer,
             "citations": citations
         }
+        
+        # 7. Save to Semantic Cache
+        set_cached_answer(query_text, final_response)
+
+        return final_response
     except Exception as e:
         print(f"❌ Error during RAG query: {e}")
         raise e

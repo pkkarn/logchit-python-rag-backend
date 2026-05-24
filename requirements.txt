@@ -6,6 +6,8 @@ pydantic-settings
 boto3
 pypdf
 openai
-pinecone-client
+pinecone
 psycopg2-binary
 python-multipart
+upstash-vector
+upstash-semantic-cache

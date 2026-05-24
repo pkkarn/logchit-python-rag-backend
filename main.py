@@ -30,7 +30,8 @@ def test_config():
         "app_name": settings.app_name,
         "pinecone_api_key": settings.pinecone_api_key,
         "openai_api_key": settings.openai_api_key,
-        "upstash_api_key": settings.upstash_api_key,
+        "upstash_vector_rest_url": settings.upstash_vector_rest_url,
+        "upstash_vector_rest_token": settings.upstash_vector_rest_token,
         "supabase_key": settings.supabase_key,
     }
 
