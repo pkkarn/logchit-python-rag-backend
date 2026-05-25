@@ -62,6 +62,22 @@ def get_document_status(conn, doc_id: str) -> str | None:
             return result['status']
         return None
 
+def get_document_by_id(conn, doc_id: str) -> dict | None:
+    """
+    Retrieves the full document record, including the S3 URL.
+    """
+    with conn.cursor() as cur:
+        cur.execute("SELECT * FROM documents WHERE id = %s;", (doc_id,))
+        return cur.fetchone()
+
+def delete_document_record(conn, doc_id: str):
+    """
+    Deletes the document from PostgreSQL.
+    Because of ON DELETE CASCADE, this also deletes all associated document_chunks.
+    """
+    with conn.cursor() as cur:
+        cur.execute("DELETE FROM documents WHERE id = %s;", (doc_id,))
+
 def insert_document_chunk(conn, doc_id: str, chunk_index: int, page_number: int, raw_text: str, pinecone_vector_id: str):
     """
     Inserts a single document chunk record into the PostgreSQL database.

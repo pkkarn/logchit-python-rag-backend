@@ -59,5 +59,16 @@ def pinecone_test_connection():
         print("❌ Error connecting to Pinecone:")
         print(e)
 
+def delete_vectors_by_document(document_id: str):
+    """
+    Deletes all vectors from Pinecone that match the given document_id in their metadata.
+    """
+    try:
+        index.delete(filter={"document_id": document_id})
+        print(f"✅ Successfully deleted vectors for document: {document_id}")
+    except Exception as e:
+        print(f"❌ Error deleting vectors from Pinecone: {e}")
+        raise e
+
 if __name__ == "__main__":
     pinecone_test_connection()

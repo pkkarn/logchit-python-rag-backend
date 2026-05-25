@@ -41,3 +41,17 @@ def download_pdf_from_s3(s3_url: str) -> bytes:
     except Exception as e:
         print(f"❌ Error downloading from S3: {e}")
         raise e
+
+def delete_pdf_from_s3(s3_url: str):
+    """
+    Deletes a file from the S3 bucket.
+    Extracts the filename key from the S3 URL.
+    """
+    try:
+        filename = s3_url.split("/")[-1]
+        bucket = settings.aws_bucket_name
+        s3_client.delete_object(Bucket=bucket, Key=filename)
+        print(f"✅ Successfully deleted {filename} from S3.")
+    except Exception as e:
+        print(f"❌ Error deleting from S3: {e}")
+        raise e

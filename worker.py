@@ -69,6 +69,9 @@ def start_worker():
                         conn.commit()
                     finally:
                         conn.close()
+                    
+                    # Prevent Poison Pill: Delete message even on failure so it doesn't loop infinitely
+                    delete_message_from_queue(receipt_handle)
 
         except Exception as e:
             print(f"❌ Worker loop error: {e}")
